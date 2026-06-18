@@ -1,0 +1,255 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Enterprise Web Scanner">
+	<main class="container">
+		<header style="text-align: center; margin-bottom: 3rem;">
+			<h1 class="title-text">Enterprise Web Scanner</h1>
+			<p style="color: var(--text-muted); font-size: 1.1rem;">Auditoría Masiva de Cumplimiento y Seguridad (Modo Pasivo)</p>
+		</header>
+
+		<div class="glass-panel">
+			<h2>Lote de URLs Objetivo</h2>
+			<p class="text-muted" style="margin-bottom: 1rem;">Introduce hasta 300 URLs separadas por saltos de línea. El sistema analizará todas concurrentemente.</p>
+			
+			<form id="scan-form">
+				<textarea 
+					id="url-input" 
+					class="corporate-input" 
+					rows="6"
+					placeholder="https://empresa1.com&#10;https://empresa2.com" 
+					required 
+				></textarea>
+				
+				<div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+					<button type="submit" class="btn-corporate btn-primary" id="btn-scan">
+						Comenzar Auditoría (Pasiva)
+					</button>
+					<div id="loading-indicator" style="display: none; align-items: center; gap: 0.5rem;">
+						<div class="spinner"></div>
+						<span style="font-weight: 600; color: var(--accent-brand);" id="progress-text">Procesando...</span>
+					</div>
+				</div>
+			</form>
+		</div>
+
+		<!-- Live Checklist -->
+		<div class="glass-panel" id="checklist-panel" style="display: none;">
+			<h3>Estado del Proceso</h3>
+			<div id="checklist">
+				<!-- Injected by JS -->
+			</div>
+		</div>
+
+		<!-- Results Data Table -->
+		<div class="glass-panel" id="results-panel" style="display: none;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+				<h2>Resultados de Auditoría</h2>
+				<button class="btn-corporate" onclick="alert('Exportación CSV en desarrollo (Propuesta Arquitectónica)')">Exportar CSV</button>
+			</div>
+			
+			<div style="overflow-x: auto;">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>URL Target</th>
+							<th>Estado</th>
+							<th>CMS / Info</th>
+							<th>Malware (HTML)</th>
+							<th>Auditoría / Cabeceras</th>
+						</tr>
+					</thead>
+					<tbody id="table-body">
+						<!-- Rows injected by JS -->
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- Generic Info Modal -->
+		<div id="info-modal" class="modal-overlay" style="display: none;">
+			<div class="modal-content">
+				<h3 id="modal-title" style="margin-bottom: 1rem; color: var(--accent-color);">Información</h3>
+				<div id="modal-body" style="color: var(--text-muted); line-height: 1.6;"></div>
+				<button class="btn-corporate btn-primary" onclick="document.getElementById('info-modal').style.display='none'" style="margin-top: 1.5rem; width: 100%;">Entendido</button>
+			</div>
+		</div>
+	</main>
+</Layout>
+
+<script>
+	const API_URL = 'http://localhost:8000/api/scan/batch';
+
+	const form = document.getElementById('scan-form') as HTMLFormElement;
+	const btnScan = document.getElementById('btn-scan') as HTMLButtonElement;
+	const urlInput = document.getElementById('url-input') as HTMLTextAreaElement;
+	const loadingIndicator = document.getElementById('loading-indicator') as HTMLDivElement;
+	const progressText = document.getElementById('progress-text') as HTMLSpanElement;
+	const checklistPanel = document.getElementById('checklist-panel') as HTMLDivElement;
+	const checklist = document.getElementById('checklist') as HTMLDivElement;
+	const resultsPanel = document.getElementById('results-panel') as HTMLDivElement;
+	const tableBody = document.getElementById('table-body') as HTMLTableSectionElement;
+
+	const steps = [
+		"Iniciando lotes y resolviendo dominios...",
+		"Descargando HTML de forma concurrente...",
+		"Analizando código fuente estático (Malware / Ofuscación)...",
+		"Extrayendo Ecosistema (Plugins y Temas)...",
+		"Validando Cabeceras de Seguridad..."
+	];
+
+	function initChecklist() {
+		checklist.innerHTML = '';
+		steps.forEach((step, i) => {
+			const div = document.createElement('div');
+			div.className = 'checklist-item';
+			div.id = `step-${i}`;
+			div.innerHTML = `<span style="font-family: monospace;">[ ]</span> ${step}`;
+			checklist.appendChild(div);
+		});
+		checklistPanel.style.display = 'block';
+		resultsPanel.style.display = 'block';
+		tableBody.innerHTML = '';
+	}
+
+	function markStepDone(index: number) {
+		const el = document.getElementById(`step-${index}`);
+		if (el) {
+			el.className = 'checklist-item done';
+			el.innerHTML = `<span style="font-family: monospace;">[✓]</span> ${steps[index]}`;
+		}
+	}
+
+	const explanations: any = {
+		"Meta Generator": "<strong>Nivel de Riesgo: Bajo</strong><br><br>La etiqueta Meta Generator revela la versión exacta del CMS (WordPress, Drupal, etc). Los atacantes utilizan escáneres automáticos para buscar webs con versiones antiguas y lanzar exploits contra ellas. Se recomienda ocultarla.",
+		"RSD Link": "<strong>Nivel de Riesgo: Bajo</strong><br><br>El enlace RSD expone endpoints XML-RPC en WordPress. Si no usas integraciones externas móviles, es mejor desactivarlo para evitar ataques de fuerza bruta contra las contraseñas.",
+		"Servidor:": "<strong>Nivel de Riesgo: Medio</strong><br><br>Exponer la versión exacta del servidor web (ej. Apache/2.4) permite a los atacantes buscar vulnerabilidades públicas específicas de esa versión exacta.",
+		"Tecnología:": "<strong>Nivel de Riesgo: Medio</strong><br><br>La cabecera X-Powered-By revela el lenguaje de programación (ej. PHP/7.4). Si la versión es antigua, es una invitación a inyectar exploits efectivos.",
+		"Clickjacking": "<strong>Nivel de Riesgo: Medio-Alto</strong><br><br>Faltan cabeceras de seguridad como X-Frame-Options o CSP. Un atacante podría incrustar tu web en un marco invisible dentro de una web maliciosa para robar clics o credenciales de administradores engañados.",
+		"HSTS": "<strong>Nivel de Riesgo: Medio</strong><br><br>Strict-Transport-Security fuerza a los navegadores a usar solo HTTPS. Sin ella, un atacante en la misma red Wi-Fi podría forzar una conexión HTTP (Downgrade) para interceptar el tráfico no cifrado."
+	};
+
+	function getTooltip(text: string) {
+		for (const key in explanations) {
+			if (text.includes(key)) return explanations[key];
+		}
+		return null;
+	}
+
+	// Make showModal globally available for inline onclick attributes
+	(window as any).showModal = function(title: string, htmlContent: string) {
+		document.getElementById('modal-title')!.textContent = title;
+		document.getElementById('modal-body')!.innerHTML = htmlContent;
+		document.getElementById('info-modal')!.style.display = 'flex';
+	};
+
+	function createTag(text: string, type: string) {
+		const mapping: any = { 'danger': 'danger', 'warning': 'warning', 'info': 'info', 'success': 'success' };
+		const cssClass = mapping[type] || 'info';
+		const tooltipHtml = getTooltip(text);
+
+		if (tooltipHtml) {
+			const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+			const safeTooltipHtml = tooltipHtml.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+			return `
+				<span class="tag tag-${cssClass}" style="display: inline-flex; align-items: center;">
+					${text}
+					<span class="info-icon" onclick="showModal('${safeText}', '${safeTooltipHtml}')">i</span>
+				</span>`;
+		}
+
+		return `<span class="tag tag-${cssClass}">${text}</span>`;
+	}
+
+	function appendResultRow(result: any) {
+		const tr = document.createElement('tr');
+		
+		if (result.status === 'error') {
+			tr.innerHTML = `
+				<td><strong>${result.target}</strong></td>
+				<td><span class="tag tag-danger">Error</span></td>
+				<td colspan="3">${result.message}</td>
+			`;
+		} else {
+			const malwareTags = result.malware.map((m: string) => createTag(m, 'danger')).join('') || '<span class="text-muted">Limpio</span>';
+			const auditTags = result.audit.map((a: string) => createTag(a, 'warning')).join('');
+			const headerTags = result.header_issues.map((h: string) => createTag(h, h.includes('Riesgo') ? 'warning' : 'info')).join('');
+			
+			tr.innerHTML = `
+				<td><strong>${result.target}</strong></td>
+				<td><span class="tag tag-success">OK</span></td>
+				<td>${result.cms_info}</td>
+				<td>${malwareTags}</td>
+				<td>${auditTags} ${headerTags}</td>
+			`;
+		}
+		tableBody.appendChild(tr);
+	}
+
+	form.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const rawUrls = urlInput.value.split('\n').map(u => u.trim()).filter(u => u);
+		if (rawUrls.length === 0) return;
+
+		btnScan.disabled = true;
+		loadingIndicator.style.display = 'flex';
+		progressText.textContent = `Procesando 0 / ${rawUrls.length}...`;
+		initChecklist();
+
+		// Simulate the checklist steps for UI while waiting for the streaming response
+		let currentStep = 0;
+		const fakeProgressInterval = setInterval(() => {
+			if (currentStep < 4) {
+				markStepDone(currentStep);
+				currentStep++;
+			}
+		}, 800);
+
+		try {
+			const response = await fetch(API_URL, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ urls: rawUrls })
+			});
+
+			if (!response.body) throw new Error('No readable stream');
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				
+				const chunk = decoder.decode(value, { stream: true });
+				const lines = chunk.split('\n').filter(line => line.trim());
+				
+				for (const line of lines) {
+					try {
+						const data = JSON.parse(line);
+						
+						if (data.event === 'result') {
+							progressText.textContent = `Procesando ${data.completed} / ${data.total}...`;
+							appendResultRow(data.data);
+						} else if (data.event === 'done') {
+							clearInterval(fakeProgressInterval);
+							for(let i=0; i<5; i++) markStepDone(i); // Mark all done
+							progressText.textContent = `¡Completado!`;
+						}
+					} catch (e) {
+						console.error('Error parsing NDJSON line:', line, e);
+					}
+				}
+			}
+
+		} catch (error) {
+			console.error(error);
+			alert('Error al escanear los lotes.');
+			clearInterval(fakeProgressInterval);
+		} finally {
+			btnScan.disabled = false;
+			setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
+		}
+	});
+</script>

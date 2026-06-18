@@ -1,0 +1,219 @@
+:root {
+  /* Clean Corporate Light UI */
+  --bg-color: #f8fafc;
+  --bg-panel: #ffffff;
+  --border-color: #e2e8f0;
+  
+  --accent-color: #0f172a;
+  --accent-hover: #334155;
+  --accent-brand: #2563eb;
+  
+  --danger-red: #ef4444;
+  --warning-yellow: #f59e0b;
+  --info-blue: #3b82f6;
+  --success-green: #10b981;
+  
+  --text-main: #334155;
+  --text-muted: #64748b;
+  --text-title: #0f172a;
+  
+  --font-main: 'Inter', system-ui, sans-serif;
+  --font-mono: 'ui-monospace', 'Cascadia Code', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-main);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  color: var(--text-title);
+  font-weight: 700;
+  margin-top: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Card Panel */
+.glass-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  margin-bottom: 2rem;
+}
+
+.title-text {
+  color: var(--accent-color);
+  font-size: 2.5rem;
+  letter-spacing: -0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* Buttons */
+.btn-corporate {
+  background: #ffffff;
+  color: var(--accent-color);
+  font-family: var(--font-main);
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.btn-corporate:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.btn-corporate.btn-primary {
+  background: var(--accent-brand);
+  color: #fff;
+  border-color: transparent;
+}
+
+.btn-corporate.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-corporate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Inputs */
+.corporate-input {
+  width: 100%;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-title);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+}
+
+.corporate-input:focus {
+  border-color: var(--accent-brand);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th, .data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--text-title);
+  background-color: #f8fafc;
+}
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0.2rem;
+}
+
+.tag-danger { background: #fee2e2; color: #991b1b; }
+.tag-warning { background: #fef3c7; color: #92400e; }
+.tag-info { background: #dbeafe; color: #1e40af; }
+.tag-success { background: #d1fae5; color: #065f46; }
+
+/* Checklist animation */
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+}
+
+.checklist-item.done {
+  color: var(--success-green);
+  font-weight: 600;
+}
+
+/* Loader */
+.spinner {
+  border: 3px solid rgba(0,0,0,0.1);
+  border-left-color: var(--accent-brand);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Info Modal & Icon */
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--info-blue);
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: transform 0.1s;
+}
+.info-icon:hover {
+  transform: scale(1.1);
+  background: var(--accent-brand);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: var(--bg-panel);
+  width: 90%;
+  max-width: 450px;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
