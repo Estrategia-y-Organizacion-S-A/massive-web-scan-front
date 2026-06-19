@@ -1,0 +1,332 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Detalles de la Web">
+	<div class="app-container">
+		<aside class="sidebar">
+			<h1 class="title-text" style="font-size: 1.5rem; margin-top: 1rem;">Web Scanner</h1>
+			<button class="sidebar-btn" onclick="window.location.href='/'">← Volver al Dashboard</button>
+		</aside>
+
+		<main class="main-content">
+			<div id="loading-state" style="text-align: center; margin-top: 4rem;">
+				<div class="spinner" style="border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--accent-brand); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: inline-block;"></div>
+				<p style="color: var(--text-muted); margin-top: 1rem;">Cargando información...</p>
+			</div>
+
+			<div id="content-state" style="display: none;">
+				<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+				<header style="margin-bottom: 2rem;">
+					<h2 class="title-text" style="font-size: 2.5rem; word-break: break-all;" id="detail-url">Cargando...</h2>
+					<div style="display: flex; gap: 1rem; margin-top: 1rem; align-items: center;">
+						<span id="detail-status"></span>
+						<span style="color: var(--text-muted);" id="detail-last-check"></span>
+					</div>
+					<div style="margin-top: 1.5rem;">
+						<button class="btn-corporate btn-primary" id="btn-scan" onclick="scanThisWebsite()">Escanear Ahora</button>
+					</div>
+				</header>
+
+				<div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+					<!-- CMS & Info Box -->
+					<div class="glass-panel" style="flex: 1; min-width: 300px;">
+						<h3 style="color: var(--accent-color); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Tecnología y CMS</h3>
+						<div id="detail-cms" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;"></div>
+						<h4 style="color: var(--text-muted); margin-top: 1.5rem; font-size: 0.9rem; text-transform: uppercase;">Servidor</h4>
+						<div id="detail-server" style="font-weight: 500;">-</div>
+						<h4 style="color: var(--text-muted); margin-top: 1.5rem; font-size: 0.9rem; text-transform: uppercase;">IP Detectada</h4>
+						<div id="detail-ip" style="font-weight: 500;">-</div>
+					</div>
+
+					<!-- Malware & Security Box -->
+					<div class="glass-panel" style="flex: 2; min-width: 400px;">
+						<h3 style="color: var(--danger-red); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Malware y Riesgos de Seguridad</h3>
+						<div id="detail-malware">
+							<span class="text-muted">No se detectaron riesgos críticos en el último escaneo.</span>
+						</div>
+						
+						<h3 style="color: var(--warning-yellow); margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Auditoría de Cabeceras</h3>
+						<div id="detail-audit">
+							<span class="text-muted">Cabeceras de seguridad correctas.</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Ping History Graph -->
+				<div class="glass-panel" style="margin-top: 2rem;">
+					<h3 style="color: var(--accent-color); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Velocidad de Respuesta (Ping)</h3>
+					<canvas id="pingChart" style="max-height: 250px;"></canvas>
+				</div>
+
+				<!-- Historic Incidents -->
+				<div class="glass-panel" style="margin-top: 2rem;">
+					<h3 style="color: var(--accent-color); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Histórico de Incidentes Recientes</h3>
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Fecha</th>
+								<th>Tipo</th>
+								<th>Mensaje</th>
+							</tr>
+						</thead>
+						<tbody id="detail-incidents-body">
+							<tr><td colspan="3" style="text-align: center; padding: 1rem;">Cargando histórico...</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- Generic Info Modal -->
+			<div id="info-modal" class="modal-overlay" style="display: none;">
+				<div class="modal-content">
+					<h3 id="modal-title" style="margin-bottom: 1rem; color: var(--accent-color);">Información</h3>
+					<div id="modal-body" style="color: var(--text-muted); line-height: 1.6;"></div>
+					<button class="btn-corporate btn-primary" onclick="document.getElementById('info-modal').style.display='none'" style="margin-top: 1.5rem; width: 100%;">Entendido</button>
+				</div>
+			</div>
+		</main>
+	</div>
+
+	<style>
+		@keyframes spin { 100% { transform: rotate(360deg); } }
+		
+		/* Modal Styles */
+		.modal-overlay {
+			position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+			background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;
+		}
+		.modal-content {
+			background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px;
+			box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+		}
+	</style>
+</Layout>
+
+<script>
+	(window as any).showModal = function(title: string, htmlContent: string) {
+		document.getElementById('modal-title')!.textContent = title;
+		document.getElementById('modal-body')!.innerHTML = htmlContent;
+		document.getElementById('info-modal')!.style.display = 'flex';
+	};
+
+	(window as any).showAlert = function(message: string, title: string = 'Aviso') {
+		(window as any).showModal(title, message);
+	};
+
+	const urlParams = new URLSearchParams(window.location.search);
+	const websiteId = urlParams.get('id');
+	
+	const API_URL_WEBSITES = 'http://localhost:8000/api/websites';
+	const API_URL_INCIDENTS = 'http://localhost:8000/api/incidents';
+
+	function getAuthHeaders() {
+		const token = localStorage.getItem('auth_token');
+		if (!token) {
+			window.location.href = '/login';
+			throw new Error("No auth token");
+		}
+		return {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${token}`
+		};
+	}
+
+	(window as any).logout = function() {
+		localStorage.removeItem('auth_token');
+		window.location.href = '/login';
+	};
+
+	if (!websiteId) {
+		(window as any).showAlert("No se proporcionó un ID válido", "Error");
+		setTimeout(() => window.location.href = '/', 1500);
+	}
+
+	let pingChartInstance: any = null;
+
+	function parseUtcDate(dateString: string) {
+		if (!dateString) return null;
+		if (!dateString.endsWith('Z') && !dateString.includes('+')) {
+			return new Date(dateString + 'Z');
+		}
+		return new Date(dateString);
+	}
+
+	async function loadDetails() {
+		try {
+			const res = await fetch(API_URL_WEBSITES, { headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
+			const websites = await res.json();
+			const w = websites.find((site: any) => site.id == websiteId);
+			
+			if (!w) {
+				(window as any).showAlert("La web no existe en la base de datos.", "No encontrada");
+				setTimeout(() => window.location.href = '/', 1500);
+				return;
+			}
+
+			// Render Status
+			document.getElementById('detail-url')!.textContent = w.url;
+			const statusEl = document.getElementById('detail-status')!;
+			if (w.is_up === true) statusEl.innerHTML = `<span class="status-dot up"></span> <span style="font-weight: 600; color: var(--success-green);">Corriendo</span>`;
+			else if (w.is_up === false) statusEl.innerHTML = `<span class="status-dot down"></span> <span style="font-weight: 600; color: var(--danger-red);">Caída</span>`;
+			else statusEl.innerHTML = `<span class="status-dot pending"></span> <span style="font-weight: 600; color: var(--warning-yellow);">Pendiente</span>`;
+
+			const d = parseUtcDate(w.last_uptime_check);
+			document.getElementById('detail-last-check')!.textContent = d ? `Última comprobación: ${d.toLocaleString('es-ES')}` : '';
+
+			// Parse Scan Data
+			if (w.last_scan_result) {
+				try {
+					const result = JSON.parse(w.last_scan_result);
+					document.getElementById('detail-cms')!.textContent = result.cms_info || 'Desconocido';
+					document.getElementById('detail-server')!.textContent = result.server || 'Oculto';
+					document.getElementById('detail-ip')!.textContent = result.ip || '-';
+
+					// Malware
+					if (result.malware && result.malware.length > 0) {
+						document.getElementById('detail-malware')!.innerHTML = result.malware.map((m: string) => `<span class="tag tag-danger" style="margin-bottom: 0.5rem; display: block; width: fit-content;">${m}</span>`).join('');
+					} else {
+						document.getElementById('detail-malware')!.innerHTML = `<span style="color: var(--text-muted);">No se detectaron riesgos críticos en el último escaneo.</span>`;
+					}
+
+					// Audit & Headers
+					let allAudit = [];
+					if (result.audit) allAudit.push(...result.audit);
+					if (result.header_issues) allAudit.push(...result.header_issues);
+
+					if (allAudit.length > 0) {
+						document.getElementById('detail-audit')!.innerHTML = allAudit.map((a: string) => `<span class="tag ${a.includes('Riesgo') ? 'tag-warning' : 'tag-info'}" style="margin-bottom: 0.5rem; display: block; width: fit-content;">${a}</span>`).join('');
+					} else {
+						document.getElementById('detail-audit')!.innerHTML = `<span style="color: var(--text-muted);">Cabeceras de seguridad correctas.</span>`;
+					}
+
+				} catch(e) {}
+			} else {
+				document.getElementById('detail-cms')!.textContent = "Aún no se ha realizado un escaneo completo.";
+			}
+
+			// Show Content
+			document.getElementById('loading-state')!.style.display = 'none';
+			document.getElementById('content-state')!.style.display = 'block';
+
+			// Load Incidents for this website
+			loadIncidents();
+
+			// Load Ping History
+			const resPing = await fetch(`${API_URL_WEBSITES}/${websiteId}/ping-history`, { headers: getAuthHeaders() });
+			if (resPing.ok) {
+				const pingData = await resPing.json();
+				drawPingChart(pingData);
+			}
+
+		} catch (e) {
+			console.error(e);
+			(window as any).showAlert("Error cargando detalles. Verifica tu conexión.", "Error");
+		}
+	}
+
+	function drawPingChart(data: any[]) {
+		const ctx = document.getElementById('pingChart') as HTMLCanvasElement;
+		if (!ctx) return;
+
+		if (pingChartInstance) {
+			pingChartInstance.destroy();
+		}
+
+		const labels = data.map(d => {
+			const date = parseUtcDate(d.created_at);
+			return date ? `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}` : '';
+		});
+		const pingValues = data.map(d => d.response_time_ms);
+
+		pingChartInstance = new Chart(ctx, {
+			type: 'line',
+			data: {
+				labels: labels,
+				datasets: [{
+					label: 'Ping (ms)',
+					data: pingValues,
+					borderColor: '#3b82f6',
+					backgroundColor: 'rgba(59, 130, 246, 0.1)',
+					borderWidth: 2,
+					fill: true,
+					tension: 0.3,
+					pointRadius: 2
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				scales: {
+					y: { beginAtZero: true, title: { display: true, text: 'Milisegundos (ms)' } },
+					x: { title: { display: true, text: 'Hora' }, ticks: { maxTicksLimit: 12 } }
+				},
+				plugins: {
+					legend: { display: false }
+				}
+			}
+		});
+	}
+
+	async function loadIncidents() {
+		try {
+			const resInc = await fetch(API_URL_INCIDENTS, { headers: getAuthHeaders() });
+			if (!resInc.ok) throw new Error("Status " + resInc.status);
+			const incidents = await resInc.json();
+			const myIncidents = incidents.filter((i: any) => i.website_id == websiteId);
+			
+			const tbody = document.getElementById('detail-incidents-body')!;
+			tbody.innerHTML = '';
+
+			if (myIncidents.length === 0) {
+				tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 1rem; color: var(--text-muted);">No hay incidentes reportados para esta web.</td></tr>`;
+				return;
+			}
+
+			myIncidents.forEach((inc: any) => {
+				const tr = document.createElement('tr');
+				const d = parseUtcDate(inc.created_at);
+				const dateStr = d ? d.toLocaleString('es-ES') : '';
+				const typeTag = inc.incident_type === 'UPTIME_DOWN' || inc.incident_type === 'SCAN_ERROR' 
+					? `<span class="tag tag-danger">${inc.incident_type}</span>`
+					: `<span class="tag tag-success">${inc.incident_type}</span>`;
+
+				tr.innerHTML = `
+					<td>${dateStr}</td>
+					<td>${typeTag}</td>
+					<td>${inc.message}</td>
+				`;
+				tbody.appendChild(tr);
+			});
+		} catch (e) {
+			console.error(e);
+		}
+	}
+
+	(window as any).scanThisWebsite = async function() {
+		const btn = document.getElementById('btn-scan') as HTMLButtonElement;
+		btn.disabled = true;
+		btn.textContent = 'Escaneando...';
+		try {
+			const res = await fetch(`${API_URL_WEBSITES}/${websiteId}/scan`, { method: 'POST', headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
+			loadDetails(); // Reload data
+			(window as any).showAlert("Escaneo finalizado correctamente.", "Éxito");
+		} catch(e) {
+			console.error(e);
+			(window as any).showAlert("Error al escanear la web. Verifica el servidor.", "Error");
+		} finally {
+			btn.disabled = false;
+			btn.textContent = 'Escanear Ahora';
+		}
+	};
+
+	loadDetails();
+</script>

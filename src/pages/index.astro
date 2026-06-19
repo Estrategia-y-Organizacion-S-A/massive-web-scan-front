@@ -7,35 +7,13 @@ import Layout from '../layouts/Layout.astro';
 		<aside class="sidebar">
 			<h1 class="title-text" style="font-size: 1.5rem; margin-top: 1rem;">Web Scanner</h1>
 			<button class="sidebar-btn active" onclick="switchTab('dashboard')">Monitorización</button>
+			<button class="sidebar-btn" onclick="switchTab('graphs')">Gráficos</button>
+			<button class="sidebar-btn" onclick="switchTab('reports')">Reportes</button>
 			<button class="sidebar-btn" onclick="switchTab('add')">Añadir Webs</button>
 		</aside>
 
 		<main class="main-content">
-			<!-- Add URLs Section -->
-			<div id="section-add" class="section">
-				<header style="margin-bottom: 2rem;">
-					<h2 class="title-text" style="font-size: 2rem;">Añadir URLs para Monitorizar</h2>
-					<p style="color: var(--text-muted); font-size: 1rem;">Introduce URLs separadas por saltos de línea. El sistema guardará las webs para comprobar su estado y escanearlas.</p>
-				</header>
-				<div class="glass-panel">
-					<form id="add-form">
-						<textarea 
-							id="url-input" 
-							class="corporate-input" 
-							rows="6"
-							placeholder="https://empresa1.com&#10;https://empresa2.com" 
-							required 
-						></textarea>
-						
-						<div style="margin-top: 1.5rem;">
-							<button type="submit" class="btn-corporate btn-primary" id="btn-add">
-								Añadir y Monitorizar
-							</button>
-						</div>
-					</form>
-				</div>
-			</div>
-
+			<!-- Dashboard Table -->
 			<!-- Dashboard Table -->
 			<div id="section-dashboard" class="section active">
 				<header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -43,10 +21,39 @@ import Layout from '../layouts/Layout.astro';
 					<div>
 						<button class="btn-corporate btn-primary" id="btn-scan-all" style="margin-right: 1rem;">Escanear Todo Ahora</button>
 						<button class="btn-corporate" id="btn-refresh">Refrescar Datos</button>
+						<button class="btn-corporate" style="border: 1px solid var(--border-color); color: var(--text-color);" id="btn-export-csv">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+								<polyline points="7 10 12 15 17 10"></polyline>
+								<line x1="12" y1="15" x2="12" y2="3"></line>
+							</svg>
+							Descargar CSV
+						</button>
+						<button class="btn-corporate" style="border: 1px solid var(--border-color); color: var(--danger-red);" onclick="logout()">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+								<polyline points="16 17 21 12 16 7"></polyline>
+								<line x1="21" y1="12" x2="9" y2="12"></line>
+							</svg>
+							Salir
+						</button>
 					</div>
 				</header>
 				
 				<div class="glass-panel" style="padding: 1rem;">
+					<!-- CMS Filter -->
+					<div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+						<label for="cms-filter" style="font-weight: 600; color: var(--text-muted);">Filtrar por CMS:</label>
+						<select id="cms-filter" class="corporate-input" style="width: auto; padding: 0.5rem;" onchange="renderTable(window.allWebsites)">
+							<option value="all">Todos</option>
+							<option value="WordPress">WordPress</option>
+							<option value="Drupal">Drupal</option>
+							<option value="React">React / SPA / Vite</option>
+							<option value="Astro">Astro</option>
+							<option value="Desconocido">Desconocido / A medida</option>
+						</select>
+					</div>
+
 					<div style="overflow-x: auto;">
 						<table class="data-table">
 							<thead>
@@ -67,6 +74,68 @@ import Layout from '../layouts/Layout.astro';
 				</div>
 			</div>
 
+			<!-- Graphs Section -->
+			<div id="section-graphs" class="section">
+				<header style="margin-bottom: 2rem;">
+					<h2 class="title-text" style="font-size: 2rem;">Dashboard Global</h2>
+				</header>
+				<div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+					<div class="glass-panel" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center;">
+						<h3 style="color: var(--text-muted); margin-bottom: 1rem;">Estado de Disponibilidad</h3>
+						<div style="position: relative; height: 300px; width: 100%;">
+							<canvas id="uptimeChart"></canvas>
+						</div>
+					</div>
+					<div class="glass-panel" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center;">
+						<h3 style="color: var(--text-muted); margin-bottom: 1rem;">Distribución de CMS</h3>
+						<div style="position: relative; height: 300px; width: 100%;">
+							<canvas id="cmsChart"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Reports Section -->
+			<div id="section-reports" class="section">
+				<header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+					<h2 class="title-text" style="font-size: 2rem;">Reportes e Incidentes</h2>
+					<button class="btn-corporate" onclick="fetchIncidents()">Refrescar Reportes</button>
+				</header>
+				<div class="glass-panel">
+					<div style="overflow-x: auto;">
+						<table class="data-table">
+							<thead>
+								<tr>
+									<th>Fecha</th>
+									<th>URL Target</th>
+									<th>Tipo</th>
+									<th>Mensaje</th>
+								</tr>
+							</thead>
+							<tbody id="reports-body">
+								<tr><td colspan="4" style="text-align: center; padding: 2rem;">Cargando reportes...</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			<!-- Add URLs Section -->
+			<div id="section-add" class="section">
+				<header style="margin-bottom: 2rem;">
+					<h2 class="title-text" style="font-size: 2rem;">Añadir URLs para Monitorizar</h2>
+					<p style="color: var(--text-muted); font-size: 1rem;">Introduce URLs separadas por saltos de línea. El sistema guardará las webs para comprobar su estado y escanearlas.</p>
+				</header>
+				<div class="glass-panel">
+					<form id="add-form">
+						<textarea id="url-input" class="corporate-input" rows="6" placeholder="https://empresa1.com&#10;https://empresa2.com" required></textarea>
+						<div style="margin-top: 1.5rem;">
+							<button type="submit" class="btn-corporate btn-primary" id="btn-add">Añadir y Monitorizar</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
 			<!-- Generic Info Modal -->
 			<div id="info-modal" class="modal-overlay" style="display: none;">
 				<div class="modal-content">
@@ -75,20 +144,66 @@ import Layout from '../layouts/Layout.astro';
 					<button class="btn-corporate btn-primary" onclick="document.getElementById('info-modal').style.display='none'" style="margin-top: 1.5rem; width: 100%;">Entendido</button>
 				</div>
 			</div>
+
+			<!-- Generic Confirm Modal -->
+			<div id="confirm-modal" class="modal-overlay" style="display: none;">
+				<div class="modal-content">
+					<h3 id="confirm-title" style="margin-bottom: 1rem; color: var(--accent-color);">Confirmación</h3>
+					<div id="confirm-body" style="color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem;"></div>
+					<div style="display: flex; gap: 1rem; justify-content: flex-end;">
+						<button class="btn-corporate" onclick="closeConfirmModal()">Cancelar</button>
+						<button class="btn-corporate btn-primary" onclick="executeConfirm()">Confirmar</button>
+					</div>
+				</div>
+			</div>
 		</main>
 	</div>
 </Layout>
 
 <script>
 	const API_URL_WEBSITES = 'http://localhost:8000/api/websites';
+	const API_URL_INCIDENTS = 'http://localhost:8000/api/incidents';
+
+	function getAuthHeaders() {
+		const token = localStorage.getItem('auth_token');
+		if (!token) {
+			window.location.href = '/login';
+			throw new Error("No auth token");
+		}
+		return {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${token}`
+		};
+	}
+
+	(window as any).logout = function() {
+		localStorage.removeItem('auth_token');
+		window.location.href = '/login';
+	};
+
+	// Check auth immediately
+	getAuthHeaders();
 
 	const form = document.getElementById('add-form') as HTMLFormElement;
 	const btnAdd = document.getElementById('btn-add') as HTMLButtonElement;
 	const urlInput = document.getElementById('url-input') as HTMLTextAreaElement;
 	const tableBody = document.getElementById('table-body') as HTMLTableSectionElement;
+	const reportsBody = document.getElementById('reports-body') as HTMLTableSectionElement;
 	const btnRefresh = document.getElementById('btn-refresh') as HTMLButtonElement;
 	const btnScanAll = document.getElementById('btn-scan-all') as HTMLButtonElement;
+	const cmsFilter = document.getElementById('cms-filter') as HTMLSelectElement;
+	
+	function parseUtcDate(dateString: string) {
+		if (!dateString) return null;
+		if (!dateString.endsWith('Z') && !dateString.includes('+')) {
+			return new Date(dateString + 'Z');
+		}
+		return new Date(dateString);
+	}
 
+	let uptimeChartInstance: any = null;
+	let cmsChartInstance: any = null;
+	(window as any).allWebsites = [];
 	const explanations: any = {
 		"Meta Generator": "<strong>Nivel de Riesgo: Bajo</strong><br><br>La etiqueta Meta Generator revela la versión exacta del CMS (WordPress, Drupal, etc). Los atacantes utilizan escáneres automáticos para buscar webs con versiones antiguas y lanzar exploits contra ellas. Se recomienda ocultarla.",
 		"RSD Link": "<strong>Nivel de Riesgo: Bajo</strong><br><br>El enlace RSD expone endpoints XML-RPC en WordPress. Si no usas integraciones externas móviles, es mejor desactivarlo para evitar ataques de fuerza bruta contra las contraseñas.",
@@ -104,10 +219,17 @@ import Layout from '../layouts/Layout.astro';
 		
 		document.getElementById(`section-${tabName}`)!.classList.add('active');
 		
-		// Update active button state
 		const buttons = document.querySelectorAll('.sidebar-btn');
 		if(tabName === 'dashboard') buttons[0].classList.add('active');
-		if(tabName === 'add') buttons[1].classList.add('active');
+		if(tabName === 'graphs') {
+			buttons[1].classList.add('active');
+			(window as any).updateCharts((window as any).allWebsites);
+		}
+		if(tabName === 'reports') {
+			buttons[2].classList.add('active');
+			(window as any).fetchIncidents();
+		}
+		if(tabName === 'add') buttons[3].classList.add('active');
 	};
 
 	function getTooltip(text: string) {
@@ -123,29 +245,60 @@ import Layout from '../layouts/Layout.astro';
 		document.getElementById('info-modal')!.style.display = 'flex';
 	};
 
-	(window as any).deleteWebsite = async function(id: number) {
-		if (!confirm('¿Estás seguro de que quieres dejar de monitorizar esta web?')) return;
-		try {
-			await fetch(`${API_URL_WEBSITES}/${id}`, { method: 'DELETE' });
-			fetchWebsites();
-		} catch (e) {
-			console.error("Error deleting website", e);
-			alert("Error al eliminar");
-		}
+	(window as any).showAlert = function(message: string, title: string = 'Aviso') {
+		(window as any).showModal(title, message);
+	};
+
+	let confirmCallback: (() => void) | null = null;
+	(window as any).showConfirm = function(message: string, title: string, onConfirm: () => void) {
+		document.getElementById('confirm-title')!.textContent = title;
+		document.getElementById('confirm-body')!.innerHTML = message;
+		document.getElementById('confirm-modal')!.style.display = 'flex';
+		confirmCallback = onConfirm;
+	};
+
+	(window as any).executeConfirm = function() {
+		document.getElementById('confirm-modal')!.style.display = 'none';
+		if (confirmCallback) confirmCallback();
+	};
+
+	(window as any).closeConfirmModal = function() {
+		document.getElementById('confirm-modal')!.style.display = 'none';
+		confirmCallback = null;
+	};
+
+	(window as any).deleteWebsite = function(id: number) {
+		(window as any).showConfirm('¿Estás seguro de que quieres dejar de monitorizar esta web?', 'Eliminar Web', async () => {
+			try {
+				const res = await fetch(`${API_URL_WEBSITES}/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+				if (!res.ok) {
+					if (res.status === 401) return (window as any).logout();
+					throw new Error("Status " + res.status);
+				}
+				fetchWebsites();
+			} catch (e) {
+				console.error("Error deleting website", e);
+				(window as any).showAlert("Error al eliminar la web. Verifica si el servidor está funcionando.", "Error");
+			}
+		});
 	};
 
 	(window as any).scanWebsite = async function(id: number) {
 		const btn = document.getElementById(`btn-scan-${id}`) as HTMLButtonElement;
 		if (btn) {
 			btn.disabled = true;
-			btn.textContent = '...';
+			btn.textContent = 'Escaneando...';
 		}
 		try {
-			await fetch(`${API_URL_WEBSITES}/${id}/scan`, { method: 'POST' });
+			const res = await fetch(`${API_URL_WEBSITES}/${id}/scan`, { method: 'POST', headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
 			fetchWebsites();
 		} catch (e) {
 			console.error("Error scanning website", e);
-			alert("Error al escanear");
+			(window as any).showAlert("Error al escanear la web. Verifica si el servidor está respondiendo.", "Error");
 		} finally {
 			if (btn) {
 				btn.disabled = false;
@@ -159,46 +312,55 @@ import Layout from '../layouts/Layout.astro';
 		td.innerHTML = `
 			<input type="text" id="edit-input-${id}" class="corporate-input" style="padding: 0.5rem; width: 100%; min-width: 200px;" value="${currentUrl}">
 			<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-				<button class="btn-corporate btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="saveUrl(${id})">Guardar</button>
+				<button class="btn-corporate btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="updateUrl(${id})">Guardar</button>
 				<button class="btn-corporate" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="fetchWebsites()">Cancelar</button>
 			</div>
 		`;
 	};
 
-	(window as any).saveUrl = async function(id: number) {
+	(window as any).updateUrl = async function(id: number) {
 		const input = document.getElementById(`edit-input-${id}`) as HTMLInputElement;
 		const newUrl = input.value.trim();
 		if(!newUrl) return;
 
 		try {
-			await fetch(`${API_URL_WEBSITES}/${id}`, {
+			const res = await fetch(`${API_URL_WEBSITES}/${id}`, {
 				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
+				headers: getAuthHeaders(),
 				body: JSON.stringify({ url: newUrl })
 			});
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
 			fetchWebsites();
 		} catch (e) {
 			console.error("Error updating website", e);
-			alert("Error al actualizar la URL");
+			(window as any).showAlert("Error al actualizar la URL. Verifica si el servidor está operativo.", "Error");
 		}
 	};
 
-	btnScanAll.addEventListener('click', async () => {
-		if (!confirm('¿Estás seguro de que quieres ejecutar el escaneo masivo para todas las webs ahora? Esto puede tardar.')) return;
-		
-		btnScanAll.disabled = true;
-		btnScanAll.textContent = 'Escaneando masivamente...';
-		
-		try {
-			await fetch(`${API_URL_WEBSITES}/scan-all`, { method: 'POST' });
-			fetchWebsites();
-		} catch (e) {
-			console.error("Error scanning all", e);
-			alert("Error al ejecutar escaneo masivo");
-		} finally {
-			btnScanAll.disabled = false;
-			btnScanAll.textContent = 'Escanear Todo Ahora';
-		}
+	btnScanAll.addEventListener('click', () => {
+		(window as any).showConfirm('¿Estás seguro de que quieres ejecutar el escaneo masivo para todas las webs ahora? Esto puede tardar.', 'Escaneo Masivo', async () => {
+			btnScanAll.disabled = true;
+			btnScanAll.textContent = 'Escaneando masivamente...';
+			
+			try {
+				const res = await fetch(`${API_URL_WEBSITES}/scan-all`, { method: 'POST', headers: getAuthHeaders() });
+				if (!res.ok) {
+					if (res.status === 401) return (window as any).logout();
+					throw new Error("Status " + res.status);
+				}
+				fetchWebsites();
+				(window as any).showAlert("El escaneo masivo ha finalizado.", "Éxito");
+			} catch (e) {
+				console.error("Error scanning all", e);
+				(window as any).showAlert("Error al ejecutar escaneo masivo. Es posible que haya tardado demasiado o el servidor se haya caído.", "Error");
+			} finally {
+				btnScanAll.disabled = false;
+				btnScanAll.textContent = 'Escanear Todo Ahora';
+			}
+		});
 	});
 
 	function createTag(text: string, type: string) {
@@ -221,19 +383,44 @@ import Layout from '../layouts/Layout.astro';
 
 	async function fetchWebsites() {
 		try {
-			const res = await fetch(API_URL_WEBSITES);
+			const res = await fetch(API_URL_WEBSITES, { headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
 			const websites = await res.json();
-			renderTable(websites);
+			(window as any).allWebsites = websites;
+			(window as any).updateCharts(websites);
+			(window as any).renderTable(websites);
 		} catch (error) {
-			console.error(error);
-			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-danger);">Error al conectar con la base de datos</td></tr>`;
+			console.error("Error in fetchWebsites:", error);
+			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-danger);">Error de conexión: El backend no está respondiendo.</td></tr>`;
 		}
 	}
 
-	function renderTable(websites: any[]) {
+	(window as any).renderTable = function(websitesToRender: any[]) {
+		let websites = websitesToRender;
+		if (!websites) websites = (window as any).allWebsites;
+		
+		if (cmsFilter && cmsFilter.value !== 'all') {
+			websites = websites.filter(w => {
+				if (!w.last_scan_result) return false;
+				try {
+					const res = JSON.parse(w.last_scan_result);
+					const cms = res.cms_info || 'Desconocido';
+					if (cmsFilter.value === 'WordPress') return cms.includes('WordPress');
+					if (cmsFilter.value === 'Drupal') return cms.includes('Drupal');
+					if (cmsFilter.value === 'React') return cms.includes('React') || cms.includes('Vite');
+					if (cmsFilter.value === 'Astro') return cms.includes('Astro');
+					if (cmsFilter.value === 'Desconocido') return cms === 'Desconocido';
+					return false;
+				} catch(e) { return false; }
+			});
+		}
+
 		tableBody.innerHTML = '';
 		if (websites.length === 0) {
-			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No hay webs monitorizadas. Añade algunas en el menú lateral.</td></tr>`;
+			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem;">No se encontraron webs con los filtros actuales.</td></tr>`;
 			return;
 		}
 
@@ -269,7 +456,9 @@ import Layout from '../layouts/Layout.astro';
 			}
 
 			tr.innerHTML = `
-				<td id="url-cell-${w.id}" style="max-width: 200px; word-wrap: break-word;"><strong>${w.url}</strong></td>
+				<td id="url-cell-${w.id}" style="max-width: 200px; word-wrap: break-word;">
+					<strong><a href="/details?id=${w.id}" style="color: var(--accent-brand); text-decoration: none;">${w.url}</a></strong>
+				</td>
 				<td>${uptimeHtml}</td>
 				<td>${cmsInfo}</td>
 				<td>${malwareHtml}</td>
@@ -295,13 +484,22 @@ import Layout from '../layouts/Layout.astro';
 		const rawUrls = urlInput.value.split('\n').map(u => u.trim()).filter(u => u);
 		if (rawUrls.length === 0) return;
 
+		const existingUrls = (window as any).allWebsites.map((w: any) => w.url.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+		for (const u of rawUrls) {
+			const normalized = u.replace(/^https?:\/\//, '').replace(/\/$/, '');
+			if (existingUrls.includes(normalized)) {
+				(window as any).showAlert(`La web <strong>${u}</strong> ya está añadida en el panel.`, "Aviso");
+				return;
+			}
+		}
+
 		btnAdd.disabled = true;
 		btnAdd.textContent = 'Añadiendo...';
 
 		try {
 			const response = await fetch(API_URL_WEBSITES, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: getAuthHeaders(),
 				body: JSON.stringify({ urls: rawUrls })
 			});
 
@@ -309,23 +507,132 @@ import Layout from '../layouts/Layout.astro';
 				urlInput.value = '';
 				await fetchWebsites();
 				(window as any).switchTab('dashboard'); // Switch to dashboard automatically
+				(window as any).showAlert("Webs añadidas correctamente a la monitorización.", "Éxito");
 			} else {
-				alert('Error al añadir URLs');
+				(window as any).showAlert('Error al añadir las URLs al backend.', "Error");
 			}
 		} catch (error) {
 			console.error(error);
-			alert('Error de conexión');
+			(window as any).showAlert('Error de conexión con el servidor.', "Error");
 		} finally {
 			btnAdd.disabled = false;
 			btnAdd.textContent = 'Añadir y Monitorizar';
 		}
 	});
 
+	(window as any).fetchIncidents = async function() {
+		try {
+			const res = await fetch(API_URL_INCIDENTS, { headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Status " + res.status);
+			}
+			const incidents = await res.json();
+			reportsBody.innerHTML = '';
+			if (incidents.length === 0) {
+				reportsBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem;">No hay incidentes reportados.</td></tr>`;
+				return;
+			}
+			incidents.forEach((inc: any) => {
+				const tr = document.createElement('tr');
+				const d = parseUtcDate(inc.created_at);
+				const dateStr = d ? d.toLocaleString('es-ES') : '';
+				const typeTag = inc.incident_type === 'UPTIME_DOWN' || inc.incident_type === 'SCAN_ERROR' 
+					? `<span class="tag tag-danger">${inc.incident_type}</span>`
+					: `<span class="tag tag-success">${inc.incident_type}</span>`;
+
+				tr.innerHTML = `
+					<td>${dateStr}</td>
+					<td><a href="/details?id=${inc.website_id}" style="color: var(--accent-brand); text-decoration: none;"><strong>${inc.website_url}</strong></a></td>
+					<td>${typeTag}</td>
+					<td>${inc.message}</td>
+				`;
+				reportsBody.appendChild(tr);
+			});
+		} catch (error) {
+			console.error(error);
+			reportsBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--color-danger);">Error al cargar reportes</td></tr>`;
+		}
+	};
+
+	(window as any).updateCharts = function(websites: any[]) {
+		if (!document.getElementById('uptimeChart')) return;
+		
+		let upCount = 0;
+		let downCount = 0;
+		let pendingCount = 0;
+		
+		let cmsCounts: any = { 'WordPress': 0, 'Drupal': 0, 'React/Vite': 0, 'Astro': 0, 'Desconocido': 0 };
+
+		websites.forEach(w => {
+			if (w.is_up === true) upCount++;
+			else if (w.is_up === false) downCount++;
+			else pendingCount++;
+
+			if (w.last_scan_result) {
+				try {
+					const res = JSON.parse(w.last_scan_result);
+					const cms = res.cms_info || '';
+					if (cms.includes('WordPress')) cmsCounts['WordPress']++;
+					else if (cms.includes('Drupal')) cmsCounts['Drupal']++;
+					else if (cms.includes('React') || cms.includes('Vite')) cmsCounts['React/Vite']++;
+					else if (cms.includes('Astro')) cmsCounts['Astro']++;
+					else cmsCounts['Desconocido']++;
+				} catch(e) {}
+			} else {
+				cmsCounts['Desconocido']++;
+			}
+		});
+
+		const Chart = (window as any).Chart;
+
+		// Uptime Chart
+		const ctxUptime = document.getElementById('uptimeChart') as HTMLCanvasElement;
+		if (uptimeChartInstance) uptimeChartInstance.destroy();
+		uptimeChartInstance = new Chart(ctxUptime, {
+			type: 'doughnut',
+			data: {
+				labels: ['Corriendo', 'Caída', 'Pendiente'],
+				datasets: [{
+					data: [upCount, downCount, pendingCount],
+					backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+					borderWidth: 0
+				}]
+			},
+			options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+		});
+
+		// CMS Chart
+		const ctxCms = document.getElementById('cmsChart') as HTMLCanvasElement;
+		if (cmsChartInstance) cmsChartInstance.destroy();
+		cmsChartInstance = new Chart(ctxCms, {
+			type: 'pie',
+			data: {
+				labels: Object.keys(cmsCounts),
+				datasets: [{
+					data: Object.values(cmsCounts),
+					backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#cbd5e1'],
+					borderWidth: 0
+				}]
+			},
+			options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+		});
+	};
+
 	btnRefresh.addEventListener('click', fetchWebsites);
+
+	// Export CSV
+	document.getElementById('btn-export-csv')!.addEventListener('click', () => {
+		const token = localStorage.getItem('auth_token');
+		if (token) {
+			window.open(`http://localhost:8000/api/incidents/export?token=${token}`, '_blank');
+		}
+	});
 
 	// Fetch on load
 	fetchWebsites();
 	
-	// Refresh dashboard periodically (every 30 seconds)
+	// Refresh dashboard periodically
 	setInterval(fetchWebsites, 30000);
+	setInterval((window as any).fetchIncidents, 30000);
 </script>
