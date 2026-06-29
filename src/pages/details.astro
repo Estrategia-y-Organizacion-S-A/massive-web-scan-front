@@ -23,8 +23,11 @@ import Layout from '../layouts/Layout.astro';
 						<span id="detail-status"></span>
 						<span style="color: var(--text-muted);" id="detail-last-check"></span>
 					</div>
-					<div style="margin-top: 1.5rem;">
+					<div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
 						<button class="btn-corporate btn-primary" id="btn-scan" onclick="scanThisWebsite()">Escanear Ahora</button>
+						<button class="btn-corporate" id="btn-toggle-alerts" style="border: 1px solid var(--border-color); color: var(--text-color);" onclick="toggleAlerts()">
+							Silenciar Alertas
+						</button>
 					</div>
 				</header>
 
@@ -170,6 +173,18 @@ import Layout from '../layouts/Layout.astro';
 
 			// Render Status
 			document.getElementById('detail-url')!.textContent = w.url;
+					
+			const btnToggle = document.getElementById('btn-toggle-alerts');
+			if (btnToggle) {
+				if (w.alerts_enabled) {
+					btnToggle.textContent = 'Silenciar Alertas';
+					btnToggle.style.color = 'var(--text-color)';
+				} else {
+					btnToggle.textContent = 'Activar Alertas';
+					btnToggle.style.color = 'var(--danger-red)';
+				}
+			}
+			
 			const statusEl = document.getElementById('detail-status')!;
 			if (w.is_up === true) statusEl.innerHTML = `<span class="status-dot up"></span> <span style="font-weight: 600; color: var(--success-green);">Corriendo</span>`;
 			else if (w.is_up === false) statusEl.innerHTML = `<span class="status-dot down"></span> <span style="font-weight: 600; color: var(--danger-red);">Caída</span>`;
@@ -325,6 +340,20 @@ import Layout from '../layouts/Layout.astro';
 		} finally {
 			btn.disabled = false;
 			btn.textContent = 'Escanear Ahora';
+		}
+	};
+
+	(window as any).toggleAlerts = async function() {
+		try {
+			const res = await fetch(`${API_URL_WEBSITES}/${websiteId}/alerts`, { method: 'PUT', headers: getAuthHeaders() });
+			if (!res.ok) {
+				if (res.status === 401) return (window as any).logout();
+				throw new Error("Error: " + res.status);
+			}
+			loadDetails();
+		} catch (e) {
+			console.error(e);
+			(window as any).showAlert("Error al modificar alertas.", "Error");
 		}
 	};
 

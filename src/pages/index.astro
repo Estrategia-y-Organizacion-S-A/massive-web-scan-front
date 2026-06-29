@@ -40,18 +40,39 @@ import Layout from '../layouts/Layout.astro';
 					</div>
 				</header>
 				
+				<!-- Resumen de Métricas (Widgets) -->
+				<div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+					<div class="glass-panel" style="flex: 1; padding: 1.5rem; text-align: center; border-left: 4px solid var(--accent-blue);">
+						<h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Uptime Global</h3>
+						<p id="widget-uptime" style="font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0; color: var(--text-color);">-%</p>
+					</div>
+					<div class="glass-panel" style="flex: 1; padding: 1.5rem; text-align: center; border-left: 4px solid var(--danger-red);">
+						<h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Webs Caídas</h3>
+						<p id="widget-down" style="font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0; color: var(--danger-red);">-</p>
+					</div>
+					<div class="glass-panel" style="flex: 1; padding: 1.5rem; text-align: center; border-left: 4px solid var(--warning-yellow);">
+						<h3 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">SSL en Riesgo (< 7 días)</h3>
+						<p id="widget-ssl" style="font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0; color: var(--warning-yellow);">-</p>
+					</div>
+				</div>
+
 				<div class="glass-panel" style="padding: 1rem;">
-					<!-- CMS Filter -->
-					<div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
-						<label for="cms-filter" style="font-weight: 600; color: var(--text-muted);">Filtrar por CMS:</label>
-						<select id="cms-filter" class="corporate-input" style="width: auto; padding: 0.5rem;" onchange="renderTable(window.allWebsites)">
-							<option value="all">Todos</option>
-							<option value="WordPress">WordPress</option>
-							<option value="Drupal">Drupal</option>
-							<option value="React">React / SPA / Vite</option>
-							<option value="Astro">Astro</option>
-							<option value="Desconocido">Desconocido / A medida</option>
-						</select>
+					<!-- Filtros y Buscador -->
+					<div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+						<div style="flex: 1; min-width: 200px;">
+							<input type="text" id="search-input" class="corporate-input" placeholder="Buscar dominio..." style="width: 100%; padding: 0.5rem;" oninput="renderTable(window.allWebsites)">
+						</div>
+						<div style="display: flex; align-items: center; gap: 1rem;">
+							<label for="cms-filter" style="font-weight: 600; color: var(--text-muted);">Filtrar por CMS:</label>
+							<select id="cms-filter" class="corporate-input" style="width: auto; padding: 0.5rem;" onchange="renderTable(window.allWebsites)">
+								<option value="all">Todos</option>
+								<option value="WordPress">WordPress</option>
+								<option value="Drupal">Drupal</option>
+								<option value="React">React / SPA / Vite</option>
+								<option value="Astro">Astro</option>
+								<option value="Desconocido">Desconocido / A medida</option>
+							</select>
+						</div>
 					</div>
 
 					<div style="overflow-x: auto;">
@@ -400,7 +421,13 @@ import Layout from '../layouts/Layout.astro';
 
 	(window as any).renderTable = function(websitesToRender: any[]) {
 		let websites = websitesToRender;
-		if (!websites) websites = (window as any).allWebsites;
+		if (!websites) websites = (window as any).allWebsites || [];
+		
+		const searchInput = document.getElementById('search-input') as HTMLInputElement;
+		if (searchInput && searchInput.value) {
+			const query = searchInput.value.toLowerCase();
+			websites = websites.filter(w => w.url.toLowerCase().includes(query));
+		}
 		
 		if (cmsFilter && cmsFilter.value !== 'all') {
 			websites = websites.filter(w => {
@@ -416,6 +443,33 @@ import Layout from '../layouts/Layout.astro';
 					return false;
 				} catch(e) { return false; }
 			});
+		}
+
+		// Update Widgets using window.allWebsites (not filtered list, so widgets always show global metrics)
+		const allW = (window as any).allWebsites || [];
+		if (allW.length > 0) {
+			const upCount = allW.filter((w: any) => w.is_up === true).length;
+			const downCount = allW.filter((w: any) => w.is_up === false).length;
+			const totalChecked = upCount + downCount;
+			const uptimePct = totalChecked > 0 ? ((upCount / totalChecked) * 100).toFixed(1) : '-';
+			
+			const widgetUptime = document.getElementById('widget-uptime');
+			if (widgetUptime) widgetUptime.textContent = `${uptimePct}%`;
+			
+			const widgetDown = document.getElementById('widget-down');
+			if (widgetDown) widgetDown.textContent = `${downCount}`;
+			
+			let sslWarnCount = 0;
+			allW.forEach((w: any) => {
+				if (w.ssl_expiration_date) {
+					const daysLeft = (new Date(w.ssl_expiration_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24);
+					if (daysLeft >= 0 && daysLeft <= 7) sslWarnCount++;
+				} else if (w.ssl_valid === false) {
+					sslWarnCount++; // Invalid SSL counts as warning too
+				}
+			});
+			const widgetSsl = document.getElementById('widget-ssl');
+			if (widgetSsl) widgetSsl.textContent = `${sslWarnCount}`;
 		}
 
 		tableBody.innerHTML = '';
@@ -450,7 +504,17 @@ import Layout from '../layouts/Layout.astro';
 						
 						const auditTags = (result.audit || []).map((a: string) => createTag(a, 'warning')).join('');
 						const headerTags = (result.header_issues || []).map((h: string) => createTag(h, h.includes('Riesgo') ? 'warning' : 'info')).join('');
-						auditHtml = auditTags + " " + headerTags;
+						
+						let sslTag = '';
+						if (w.ssl_valid === false) {
+							sslTag = createTag('SSL Inválido', 'danger');
+						} else if (w.ssl_expiration_date) {
+							const days = Math.floor((new Date(w.ssl_expiration_date).getTime() - new Date().getTime()) / (1000*3600*24));
+							if (days <= 7) sslTag = createTag(`SSL Caduca: ${days}d`, 'danger');
+							else sslTag = createTag(`SSL OK: ${days}d`, 'success');
+						}
+
+						auditHtml = auditTags + " " + headerTags + " " + sslTag;
 					}
 				} catch(e) {}
 			}
